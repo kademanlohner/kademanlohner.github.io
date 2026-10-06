@@ -6,6 +6,9 @@
 <!-- Privacy guard: the browser itself blocks any network request from this page. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Today List">
 <title>Today List</title>
 <style>
   :root{--bg:#f6f5f2;--card:#fff;--ink:#1c1c1c;--muted:#6b6b6b;--line:#e4e1da;--accent:#1f6f5c;--accent-soft:#e3f0ec;--warn:#fff4d6;--warn-ink:#6a5200;--danger:#b3261e;}
@@ -69,6 +72,21 @@
   .hidden{display:none !important}
   details summary{cursor:pointer;color:var(--accent);padding:10px 0;font-size:16px}
   .history{font-size:14px;color:var(--muted);padding-left:18px}
+  .tip{background:var(--accent-soft);color:var(--ink);border-radius:14px;padding:12px 14px;margin:8px 0;font-size:15px}
+  .tip b{display:block;font-size:17px;margin-bottom:4px}
+  .tip ol{margin:6px 0 8px;padding-left:20px}
+  .tip button{min-height:44px}
+  .backup-card{border:2px solid var(--accent)}
+  .backup-card.overdue{border-color:#e0cf98;background:var(--warn)}
+  .backup-card .bk-title{font-weight:650;font-size:17px}
+  .week-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:16px}
+  .week-table th,.week-table td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:center}
+  .week-table th:first-child,.week-table td:first-child{text-align:left}
+  .week-table th{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+  .stat .num{font-size:30px;font-weight:700;color:var(--accent);line-height:1.1}
+  .stat .lbl{font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -78,17 +96,26 @@
     <span><b>Example data</b> — replace with your own contacts</span>
     <button type="button" id="clearExampleBtn">Clear example data</button>
   </div>
+  <div id="homeTip" class="tip hidden" role="note">
+    <b>📲 First: put this on your Home Screen</b>
+    Do this before you add anyone. iPhone can erase a website's saved list if you don't open it for about a week. The Home Screen icon keeps your list safe.
+    <ol><li><b style="display:inline;font-size:inherit">iPhone (Safari):</b> tap Share ⬆️, then "Add to Home Screen".</li><li><b style="display:inline;font-size:inherit">Android (Chrome):</b> tap ⋮, then "Add to Home screen".</li></ol>
+    After that, always open Today List from the icon. The icon keeps its own copy of your list, separate from the browser.
+    <div class="row"><button type="button" class="btn primary" id="homeTipOk">Got it</button></div>
+  </div>
   <div id="storageWarn" class="banner hidden">This browser is blocking storage, so changes won't be kept after you close it.</div>
   <main>
     <section id="screen-today"></section>
     <section id="screen-add" class="hidden"></section>
     <section id="screen-people" class="hidden"></section>
+    <section id="screen-week" class="hidden"></section>
   </main>
 </div>
 <nav class="tabs" aria-label="Screens">
   <button type="button" data-tab="today" class="on"><span class="ic">☀️</span>Today</button>
   <button type="button" data-tab="add"><span class="ic">➕</span>Add</button>
   <button type="button" data-tab="people"><span class="ic">👥</span>People</button>
+  <button type="button" data-tab="week"><span class="ic">📊</span>My week</button>
 </nav>
 <div id="toast" class="toast" aria-live="polite"></div>
 <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" class="hidden">
@@ -159,6 +186,16 @@ function seed(){
 
 var S = load();
 if (!S) { S = { contacts: seed(), agent: '', today: null, v: 1 }; save(); }
+if (!S.stats) S.stats = {};
+
+/* ---------- weekly counts (numbers only, never names) ---------- */
+function dayStat(k){
+  k = k || todayISO();
+  if (!S.stats[k]) S.stats[k] = { opened: 0, reached: 0, added: 0, followups: 0, finished: 0 };
+  return S.stats[k];
+}
+function bump(field, n){ var d = dayStat(); d[field] = Math.max(0, (d[field] || 0) + (n == null ? 1 : n)); }
+function markOpened(){ var d = dayStat(); if (!d.opened) { d.opened = 1; save(); } }
 
 /* ---------- helpers ---------- */
 function el(id){ return document.getElementById(id); }
@@ -281,9 +318,9 @@ function smsHref(c, body){ var n = telNum(c.phone); return n ? 'sms:' + n + '?&b
 var ui = { tab: 'today', onboarding: false, peopleQuery: '' };
 function show(tab){
   ui.tab = tab;
-  ['today', 'add', 'people'].forEach(function(t){ el('screen-' + t).classList.toggle('hidden', t !== tab); });
+  ['today', 'add', 'people', 'week'].forEach(function(t){ el('screen-' + t).classList.toggle('hidden', t !== tab); });
   document.querySelectorAll('nav.tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === tab); });
-  el('title').textContent = { today: 'Today', add: 'Add a lead', people: 'People' }[tab];
+  el('title').textContent = { today: 'Today', add: 'Add a lead', people: 'People', week: 'My week' }[tab];
   render();
   window.scrollTo(0, 0);
 }
@@ -296,6 +333,8 @@ function render(){
   if (ui.tab === 'today') renderToday();
   if (ui.tab === 'add') renderAdd();
   if (ui.tab === 'people') renderPeople();
+  if (ui.tab === 'week') renderWeek();
+  renderHomeTip();
 }
 
 /* ---------- TODAY ---------- */
@@ -304,6 +343,7 @@ function renderToday(){
   if (S.contacts.length === 0) ui.onboarding = true;
   if (ui.onboarding) { renderOnboarding(box); return; }
   var T = ensureToday();
+  markOpened();
   var open = T.ids.filter(function(id){ return !T.done[id]; });
   var done = T.ids.filter(function(id){ return T.done[id]; });
   var h = '';
@@ -311,6 +351,7 @@ function renderToday(){
     h = '<div class="done-screen" id="clearScreen"><div class="big-check">☀️</div><h2>Nobody to chase today</h2><p class="muted">No one is due right now. Met someone new? Add them so they don\'t slip.</p>' +
         '<div class="row"><button class="btn primary" type="button" data-go="add">➕ Add a lead</button></div></div>';
   } else if (open.length === 0) {
+    if (!dayStat().finished) { dayStat().finished = 1; save(); }
     h = '<div class="done-screen" id="doneScreen"><div class="big-check">✓</div><h2>Done for today</h2>' +
         '<p>You reached ' + done.length + (done.length === 1 ? ' person' : ' people') + '. That\'s the job. Nice work.</p>' +
         '<p class="muted">Your next list will be here tomorrow morning.</p></div>' + doneListHTML(done);
@@ -319,7 +360,7 @@ function renderToday(){
     open.forEach(function(id){ h += cardHTML(byId(id)); });
     if (done.length) h += '<div class="label">Done</div>' + doneListHTML(done);
   }
-  box.innerHTML = h + privacyHTML();
+  box.innerHTML = h + backupCardHTML() + privacyHTML();
   wireToday(box);
 }
 function doneListHTML(ids){
@@ -353,6 +394,7 @@ function cardHTML(c){
 }
 function wireToday(box){
   box.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ show(b.getAttribute('data-go')); }); });
+  var bk = box.querySelector('#backupBtn'); if (bk) bk.addEventListener('click', backup);
   box.querySelectorAll('[data-undo]').forEach(function(b){ b.addEventListener('click', function(){ undoCheck(b.getAttribute('data-undo')); }); });
   box.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ openEdit(b.getAttribute('data-edit')); }); });
   box.querySelectorAll('.today-card').forEach(function(card){
@@ -393,7 +435,9 @@ function openCheck(id){
 }
 function checkOff(id, note, fu){
   var c = byId(id), T = ensureToday(), t = todayDate();
-  T.done[id] = { prev: { last_contact: c.last_contact, next_follow_up: c.next_follow_up, logLen: (c.log || []).length }, note: note || '' };
+  var fuSet = fu === '1w' || fu === '1m' || fu === '3m';
+  T.done[id] = { prev: { last_contact: c.last_contact, next_follow_up: c.next_follow_up, logLen: (c.log || []).length }, note: note || '', fuCounted: fuSet };
+  bump('reached'); if (fuSet) bump('followups');
   c.last_contact = iso(t);
   c.next_follow_up = fu === '1w' ? iso(addDays(t, 7)) : fu === '1m' ? iso(addMonths(t, 1)) : fu === '3m' ? iso(addMonths(t, 3)) : '';
   c.log = c.log || [];
@@ -403,6 +447,7 @@ function checkOff(id, note, fu){
 function undoCheck(id){
   var c = byId(id), T = S.today, d = T.done[id]; if (!c || !d) return;
   c.last_contact = d.prev.last_contact; c.next_follow_up = d.prev.next_follow_up; c.log = (c.log || []).slice(0, d.prev.logLen);
+  bump('reached', -1); if (d.fuCounted) bump('followups', -1);
   delete T.done[id]; save(); renderToday();
 }
 
@@ -431,7 +476,7 @@ function wireQuickAdd(root, onChange){
     var t = todayDate();
     var lc = last === 'week' ? iso(addDays(t, -3)) : last === 'month' ? iso(addDays(t, -15)) : last === '3m' ? iso(addDays(t, -100)) : '';
     var c = { id: uid(), name: n, phone: fmtPhone(phone.value), email: '', last_contact: lc, next_follow_up: '', notes: '', tags: '', home_purchase_date: '', created: iso(t), log: [], example: false };
-    S.contacts.push(c); save();
+    S.contacts.push(c); bump('added'); save();
     qaSession.push(n);
     name.value = ''; phone.value = ''; last = null;
     root.querySelectorAll('#qaLast .chip').forEach(function(x){ x.classList.remove('sel'); });
@@ -584,7 +629,7 @@ function saveLead(){
   var name = el('pName').value.trim(), phone = el('pPhone').value.trim();
   if (!name && !phone) { toast('Add at least a name or phone'); el('pName').focus(); return; }
   var c = { id: uid(), name: name || 'New lead ' + fmtPhone(phone), phone: fmtPhone(phone), email: el('pDate').getAttribute('data-email') || '', last_contact: '', next_follow_up: el('pDate').value || '', notes: el('addText').value.trim(), tags: 'lead', home_purchase_date: '', created: todayISO(), log: [], example: false };
-  S.contacts.push(c); save();
+  S.contacts.push(c); bump('added'); if (c.next_follow_up) bump('followups'); save();
   addToTodayIfDue(c);
   toast('Saved ' + c.name + (c.next_follow_up ? ' · follow up ' + niceISO(c.next_follow_up) : ''));
   el('addText').value = ''; addTouched = {}; refreshParsed();
@@ -603,13 +648,14 @@ function renderPeople(){
       '<input type="search" id="peopleSearch" placeholder="Search name, phone, notes" aria-label="Search people">' +
       '<div class="row"><button type="button" class="btn soft" id="peopleAdd">➕ Add person</button></div>' +
       '<div class="hint" id="peopleCount"></div><ul class="people" id="peopleList"></ul>' +
-      '<div class="sep"></div><div class="label">Import &amp; export (optional)</div>' +
-      '<div class="row"><button type="button" class="btn" id="importBtn">Import CSV</button><button type="button" class="btn" id="exportBtn">Export CSV</button></div>' +
+      '<div class="sep"></div><div class="label">Back up &amp; restore</div>' +
+      '<div class="row"><button type="button" class="btn primary" id="exportBtn">⬇️ Back up my list</button></div>' +
+      '<div class="row"><button type="button" class="btn" id="importBtn">Restore or import a CSV file</button></div>' +
       '<p class="hint">Any spreadsheet saved as CSV works. Columns can be: name, phone, email, last_contact, next_follow_up, notes, tags, home_purchase_date. <button type="button" class="link" id="templateBtn">Get a blank template</button></p>' +
       '<div class="label">Settings</div>' +
       '<div class="field"><label for="agentName">Your name (added to the end of messages, optional)</label><input type="text" id="agentName" autocomplete="off" placeholder="e.g. Cameron"></div>' +
       '<div class="row"><button type="button" class="btn danger" id="eraseBtn">Erase all my data</button></div>' +
-      '<p class="hint">Tip: tap Export CSV now and then as a backup. Clearing this browser\'s data also clears your list.</p>' +
+      '<p class="hint">Your list is saved only on this phone. Tap "Back up my list" once a week. To restore, tap "Restore or import" and pick your backup file.</p>' +
       privacyHTML();
     el('peopleSearch').addEventListener('input', function(){ ui.peopleQuery = this.value; listPeople(); });
     el('peopleAdd').addEventListener('click', function(){ show('add'); });
@@ -619,7 +665,7 @@ function renderPeople(){
     el('agentName').value = S.agent || '';
     el('agentName').addEventListener('input', function(){ S.agent = this.value.trim(); save(); });
     el('eraseBtn').addEventListener('click', function(){
-      if (window.confirm('Erase every contact on this device? This cannot be undone.')) { S.contacts = []; S.today = null; save(); toast('All data erased'); show('today'); }
+      if (window.confirm('Erase every contact on this device? This cannot be undone.')) { S.contacts = []; S.today = null; S.stats = {}; S.lastBackup = ''; save(); toast('All data erased'); show('today'); }
     });
   }
   listPeople();
@@ -748,10 +794,39 @@ el('csvFile').addEventListener('change', function(){
   reader.readAsText(file);
 });
 function csvCell(v){ v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
-function exportCSV(){
+function csvText(){
   var lines = [CSV_COLS.join(',')].concat(S.contacts.map(function(c){ return CSV_COLS.map(function(k){ return csvCell(c[k]); }).join(','); }));
-  download('today_list_contacts_' + todayISO() + '.csv', lines.join('\n') + '\n');
-  toast('Saved a CSV copy to your device');
+  return lines.join('\n') + '\n';
+}
+function backupDone(){ S.lastBackup = todayISO(); save(); toast('Backup saved. Keep that file somewhere safe.'); if (ui.tab === 'today') renderToday(); }
+function backup(){
+  var name = 'today_list_backup_' + todayISO() + '.csv', text = csvText();
+  // Phones: the share sheet lets you save the file to Files, Drive, or email it to yourself.
+  try {
+    if (window.File && navigator.canShare && navigator.share) {
+      var f = new File([text], name, { type: 'text/csv' });
+      if (navigator.canShare({ files: [f] })) {
+        navigator.share({ files: [f], title: 'Today List backup' }).then(backupDone).catch(function(e){
+          if (e && e.name === 'AbortError') { toast('Backup not saved'); return; }
+          download(name, text); backupDone();
+        });
+        return;
+      }
+    }
+  } catch (e) {}
+  download(name, text); backupDone();
+}
+var exportCSV = backup;
+function backupCardHTML(){
+  var lb = parseISO(S.lastBackup), days = lb ? diffDays(lb, todayDate()) : null;
+  var real = S.contacts.filter(function(c){ return !c.example; }).length;
+  var overdue = real > 0 && (days == null || days >= 7);
+  var when = days == null ? 'Last backup: never' : days === 0 ? 'Last backup: today' : days === 1 ? 'Last backup: yesterday' : 'Last backup: ' + days + ' days ago';
+  return '<div class="card backup-card' + (overdue ? ' overdue' : '') + '" id="backupCard">' +
+    '<div class="bk-title">🔒 Your list is saved only on this phone. Back it up.</div>' +
+    '<div class="hint" id="lastBackup">' + when + (overdue ? ' · back up once a week' : '') + '</div>' +
+    '<div class="row"><button type="button" class="btn primary" id="backupBtn">⬇️ Back up my list</button></div>' +
+    '<p class="hint">To restore: People, then "Restore or import", then pick the backup file.</p></div>';
 }
 function download(name, text){
   var a = document.createElement('a');
@@ -769,10 +844,48 @@ function clearExamples(){
 }
 el('clearExampleBtn').addEventListener('click', clearExamples);
 
-function privacyHTML(){ return '<p class="privacy">🔒 Your contacts are saved only in this browser on this device. This app makes no network calls.</p>'; }
+function privacyHTML(){ return '<p class="privacy">🔒 Your list is saved only on this phone. Back it up now and then. This app makes no network calls.</p>'; }
+
+/* ---------- Home Screen tip (shown until dismissed) ---------- */
+function isStandalone(){ try { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) { return false; } }
+function renderHomeTip(){ el('homeTip').classList.toggle('hidden', !!S.homeTipSeen || isStandalone()); }
+el('homeTipOk').addEventListener('click', function(){ S.homeTipSeen = 1; save(); renderHomeTip(); });
+
+/* ---------- MY WEEK: counts only, safe to screenshot ---------- */
+function renderWeek(){
+  var t = todayDate(), mon = addDays(t, -((t.getDay() + 6) % 7));
+  var days = [0, 1, 2, 3, 4, 5, 6].map(function(i){ return addDays(mon, i); });
+  var tot = { opened: 0, weekdaysOpened: 0, reached: 0, added: 0, followups: 0, finished: 0 };
+  var rows = '';
+  days.forEach(function(d, i){
+    var k = iso(d), s = S.stats[k] || { opened: 0, reached: 0, added: 0, followups: 0, finished: 0 };
+    var weekend = i >= 5, future = d > t;
+    if (s.opened) { tot.opened++; if (!weekend) tot.weekdaysOpened++; }
+    tot.reached += s.reached || 0; tot.added += s.added || 0; tot.followups += s.followups || 0; tot.finished += s.finished ? 1 : 0;
+    if (weekend && !s.opened && !s.reached && !s.added) return;
+    rows += '<tr><td>' + d.toLocaleDateString(undefined, { weekday: 'short' }) + '</td>' +
+      '<td>' + (future ? '' : s.opened ? '✓' : '–') + '</td>' +
+      '<td>' + (future ? '' : (s.reached || 0)) + '</td>' +
+      '<td>' + (future ? '' : s.finished ? '✓' : '–') + '</td></tr>';
+  });
+  var range = nice(mon) + ' – ' + nice(addDays(mon, 4));
+  el('screen-week').innerHTML =
+    '<p class="muted" style="margin-top:4px">Week of ' + esc(range) + '</p>' +
+    '<div class="stat-grid" id="weekStats">' +
+      '<div class="stat"><div class="num" id="wkOpened">' + tot.weekdaysOpened + ' of 5</div><div class="lbl">weekdays opened (goal: 4)</div></div>' +
+      '<div class="stat"><div class="num" id="wkReached">' + tot.reached + '</div><div class="lbl">people reached</div></div>' +
+      '<div class="stat"><div class="num" id="wkAdded">' + tot.added + '</div><div class="lbl">new people added</div></div>' +
+      '<div class="stat"><div class="num" id="wkFollowups">' + tot.followups + '</div><div class="lbl">follow-ups set</div></div>' +
+      '<div class="stat" style="grid-column:1 / -1"><div class="num" id="wkFinished">' + tot.finished + '</div><div class="lbl">days you finished "Done for today"</div></div>' +
+    '</div>' +
+    '<table class="week-table" id="weekTable"><thead><tr><th>Day</th><th>Opened</th><th>Reached</th><th>Done</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="hint">Numbers only, no names. It\'s safe to screenshot this on Friday and send it.</p>' +
+    privacyHTML();
+}
 
 // Small hook for automated tests only (no network, no side effects).
 window.TodayList = { parseLead: parseLead, parseDateHint: parseDateHint, parseCSV: parseCSV, rankAll: rankAll, state: function(){ return S; } };
+markOpened();
 
 el('storageWarn').classList.toggle('hidden', storageOK);
 render();
