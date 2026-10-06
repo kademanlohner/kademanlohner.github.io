@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Privacy guard: the browser itself blocks any network request from this page. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="theme-color" content="#1f6f5c">
+<title>Today List</title>
+<style>
+  :root{--bg:#f6f5f2;--card:#fff;--ink:#1c1c1c;--muted:#6b6b6b;--line:#e4e1da;--accent:#1f6f5c;--accent-soft:#e3f0ec;--warn:#fff4d6;--warn-ink:#6a5200;--danger:#b3261e;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:17px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  .wrap{max-width:560px;margin:0 auto;padding:0 16px}
+  header.top{padding:18px 0 6px}
+  header.top h1{font-size:26px;margin:0}
+  header.top .sub{color:var(--muted);font-size:15px;margin-top:2px}
+  .banner{background:var(--warn);color:var(--warn-ink);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:15px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .banner button{background:#fff;border:1px solid #e0cf98;color:var(--warn-ink);border-radius:10px;padding:8px 12px;font-size:15px;min-height:40px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .name{font-size:21px;font-weight:650}
+  .reason{color:var(--accent);font-size:15px;margin-top:2px}
+  .row{display:flex;gap:10px;margin-top:12px}
+  .btn{display:flex;align-items:center;justify-content:center;gap:6px;flex:1;min-height:52px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:17px;font-weight:600;text-decoration:none;cursor:pointer;padding:0 14px;font-family:inherit}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.soft{background:var(--accent-soft);border-color:var(--accent-soft);color:var(--accent)}
+  .btn.danger{color:var(--danger)}
+  .btn[aria-disabled="true"],.btn:disabled{opacity:.4;pointer-events:none}
+  .label{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:14px 0 6px}
+  .msg{display:block;width:100%;text-align:left;background:#fafaf8;border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px;font:inherit;font-size:16px;color:var(--ink);cursor:pointer}
+  .msg.sel{border-color:var(--accent);background:var(--accent-soft)}
+  .msg .pick{font-size:12px;color:var(--muted);display:block;margin-bottom:2px}
+  .msg.sel .pick{color:var(--accent);font-weight:600}
+  .link{background:none;border:none;color:var(--accent);font:inherit;font-size:15px;padding:8px 0;cursor:pointer;text-decoration:underline}
+  textarea,input[type=text],input[type=tel],input[type=date],input[type=search],input[type=email]{width:100%;font:inherit;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+  textarea{resize:vertical}
+  .hint{color:var(--muted);font-size:14px;margin:6px 0 0}
+  .muted{color:var(--muted)}
+  .progress{font-size:15px;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{flex:1 1 auto;min-height:46px;border-radius:999px;border:1px solid var(--line);background:#fff;font:inherit;font-size:16px;padding:0 14px;cursor:pointer;color:var(--ink)}
+  .chip.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+  .donelist{list-style:none;padding:0;margin:8px 0}
+  .donelist li{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);color:var(--muted)}
+  .done-screen{text-align:center;padding:40px 10px 10px}
+  .big-check{width:84px;height:84px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:44px;line-height:84px;margin:0 auto 14px}
+  .done-screen h2{font-size:26px;margin:0 0 6px}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+  nav.tabs button{flex:1;min-height:64px;background:none;border:none;font:inherit;font-size:16px;color:var(--muted);cursor:pointer}
+  nav.tabs button .ic{display:block;font-size:22px;line-height:1.1}
+  nav.tabs button.on{color:var(--accent);font-weight:650}
+  .people{list-style:none;padding:0;margin:8px 0}
+  .people li{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;cursor:pointer;min-height:56px}
+  .people .pname{font-weight:600}
+  .people .pmeta{font-size:14px;color:var(--muted)}
+  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+  .sheet h2{margin:0 0 6px;font-size:21px}
+  .field{margin:10px 0}
+  .field label{display:block;font-size:14px;color:var(--muted);margin-bottom:4px}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));background:#222;color:#fff;padding:10px 16px;border-radius:12px;font-size:15px;z-index:20;max-width:90%;text-align:center;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .privacy{font-size:13px;color:var(--muted);text-align:center;margin:18px 0 8px}
+  .qa-added{font-size:15px;color:var(--muted);margin:6px 0}
+  .welcome h2{font-size:23px;margin:6px 0}
+  .parsed-ok{color:var(--accent);font-size:14px}
+  .sep{height:1px;background:var(--line);margin:18px 0}
+  .hidden{display:none !important}
+  details summary{cursor:pointer;color:var(--accent);padding:10px 0;font-size:16px}
+  .history{font-size:14px;color:var(--muted);padding-left:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><h1 id="title">Today</h1><div class="sub" id="subtitle"></div></header>
+  <div id="exampleBanner" class="banner hidden" role="status">
+    <span><b>Example data</b> — replace with your own contacts</span>
+    <button type="button" id="clearExampleBtn">Clear example data</button>
+  </div>
+  <div id="storageWarn" class="banner hidden">This browser is blocking storage, so changes won't be kept after you close it.</div>
+  <main>
+    <section id="screen-today"></section>
+    <section id="screen-add" class="hidden"></section>
+    <section id="screen-people" class="hidden"></section>
+  </main>
+</div>
+<nav class="tabs" aria-label="Screens">
+  <button type="button" data-tab="today" class="on"><span class="ic">☀️</span>Today</button>
+  <button type="button" data-tab="add"><span class="ic">➕</span>Add</button>
+  <button type="button" data-tab="people"><span class="ic">👥</span>People</button>
+</nav>
+<div id="toast" class="toast" aria-live="polite"></div>
+<input type="file" id="csvFile" accept=".csv,text/csv,text/plain" class="hidden">
+
+<script>
+(function(){
+'use strict';
+var KEY = 'todaylist_v1';
+var CAP = 5;
+var HOT_RE = /\b(hot|ready|pre-?approved|preapproved)\b/i;
+var MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+var MON3 = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+var WEEKDAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+var CSV_COLS = ['name','phone','email','last_contact','next_follow_up','notes','tags','home_purchase_date'];
+
+/* ---------- dates (all local, stored as YYYY-MM-DD) ---------- */
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function iso(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function parseISO(s){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; }
+function todayDate(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function todayISO(){ return iso(todayDate()); }
+function addDays(d, n){ var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+function addMonths(d, n){ var x = new Date(d.getFullYear(), d.getMonth() + n, 1); var last = new Date(x.getFullYear(), x.getMonth()+1, 0).getDate(); x.setDate(Math.min(d.getDate(), last)); return x; }
+function diffDays(a, b){ return Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5); }
+function nice(d){ return d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' }); }
+function niceISO(s){ var d = parseISO(s); return d ? nice(d) : ''; }
+function cap1(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ---------- storage ---------- */
+var storageOK = true;
+function load(){
+  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.contacts)) return s; }
+  catch(e){ storageOK = false; }
+  return null;
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  catch(e){ storageOK = false; }
+  el('storageWarn').classList.toggle('hidden', storageOK);
+}
+function uid(){ return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ---------- seed: 12 clearly FAKE example contacts (555-01xx numbers) ---------- */
+function seed(){
+  var t = todayDate();
+  function d(n){ return iso(addDays(t, n)); }
+  function yearsAgo(y, offset){ var x = addDays(t, offset); return iso(new Date(x.getFullYear() - y, x.getMonth(), x.getDate())); }
+  var month = cap1(MONTHS[t.getMonth()]);
+  var rows = [
+    // name, phone, last_contact, next_follow_up, notes, tags, home_purchase_date, created offset
+    ['Jordan Rivers (example)', '360-555-0101', d(-40), d(-2), 'Said call back in ' + month + '. Pre-approved, looking in Salmon Creek.', 'buyer', '', -60],
+    ['Maya Thornton (example)', '360-555-0102', d(-20), d(5), 'Wants to list in spring. Asked me to check in.', 'seller', '', -90],
+    ['Luis Ortega (example)', '360-555-0103', '', '', 'New lead from open house on Main St. Ready to tour this weekend.', 'buyer', '', -1],
+    ['Grace Liu (example)', '360-555-0104', d(-8), '', 'Asked about 2br condos downtown.', 'buyer', '', -30],
+    ['Tom Becker (example)', '360-555-0105', d(-200), '', 'Past client. Two kids, dog named Biscuit.', 'past client', yearsAgo(3, 3), -1200],
+    ['Nina Patel (example)', '360-555-0106', d(-32), '', 'Thinking about downsizing next year.', 'sphere', '', -400],
+    ['Omar Haddad (example)', '360-555-0107', d(-75), '', 'Past client. Asked about rental property.', 'past client', yearsAgo(5, 120), -2000],
+    ['Ellie Brooks (example)', '360-555-0108', d(-45), '', 'Hot. Relocating for work, needs to sell first.', 'seller', '', -100],
+    ['Ray Delgado (example)', '360-555-0109', d(-120), '', 'Met at kids\' soccer. Renting now.', 'sphere', '', -500],
+    ['Hannah Moore (example)', '360-555-0110', d(-5), d(10), 'Touring new builds with her.', 'buyer', '', -50],
+    ['Chris Avery (example)', '360-555-0111', d(-12), '', 'Past client, loves gardening.', 'past client', yearsAgo(2, 60), -800],
+    ['Dana Whitfield (example)', '360-555-0112', d(-2), d(30), 'Just closed! Sent thank-you gift.', 'past client', d(-3), -120]
+  ];
+  return rows.map(function(r){
+    return { id: uid(), name: r[0], phone: r[1], email: '', last_contact: r[2], next_follow_up: r[3], notes: r[4], tags: r[5], home_purchase_date: r[6], created: d(r[7]), log: [], example: true };
+  });
+}
+
+var S = load();
+if (!S) { S = { contacts: seed(), agent: '', today: null, v: 1 }; save(); }
+
+/* ---------- helpers ---------- */
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function byId(id){ for (var i = 0; i < S.contacts.length; i++) if (S.contacts[i].id === id) return S.contacts[i]; return null; }
+function firstName(n){ return String(n || '').replace(/\(example\)/i, '').trim().split(/\s+/)[0] || 'there'; }
+function digits(p){ return String(p || '').replace(/\D/g, ''); }
+function telNum(p){ var d = digits(p); if (d.length === 10) return '+1' + d; if (d.length === 11 && d[0] === '1') return '+' + d; return d ? (String(p).trim()[0] === '+' ? '+' : '') + d : ''; }
+function fmtPhone(p){ var d = digits(p); if (d.length === 11 && d[0] === '1') d = d.slice(1); return d.length === 10 ? d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6) : String(p || '').trim(); }
+var toastTimer;
+function toast(msg){ var t = el('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2600); }
+
+/* ---------- ranking (transparent rules) ---------- */
+function hotWord(c){
+  var texts = [];
+  if (c.log && c.log.length) for (var i = c.log.length - 1; i >= 0; i--) texts.push(c.log[i].text || '');
+  texts.push(c.notes || '');
+  for (var j = 0; j < texts.length; j++){ var m = HOT_RE.exec(texts[j]); if (m) return m[1].toLowerCase(); }
+  return '';
+}
+function anniversary(c, t){
+  var p = parseISO(c.home_purchase_date); if (!p) return null;
+  var best = null;
+  [t.getFullYear() - 1, t.getFullYear(), t.getFullYear() + 1].forEach(function(y){
+    var a = new Date(y, p.getMonth(), p.getDate()); var dd = diffDays(t, a);
+    if (Math.abs(dd) <= 7 && (y - p.getFullYear()) >= 1 && (!best || Math.abs(dd) < Math.abs(best.days))) best = { days: dd, years: y - p.getFullYear(), date: a };
+  });
+  return best;
+}
+function rankInfo(c, t){
+  var last = parseISO(c.last_contact), nfu = parseISO(c.next_follow_up);
+  var hot = hotWord(c);
+  var hotTxt = hot ? ' · notes say “' + hot + '”' : '';
+  // 1) overdue (or due today) next follow-up
+  if (nfu && nfu <= t && !(last && last >= nfu)) {
+    var over = diffDays(nfu, t), reason;
+    var cb = /call (?:me |her |him |them |us )?back (?:in|after|around|early|mid|late)\s+(?:in\s+)?(january|february|march|april|may|june|july|august|september|october|november|december)/i.exec(c.notes || '');
+    if (cb && MONTHS.indexOf(cb[1].toLowerCase()) === t.getMonth()) reason = 'Said call back in ' + cap1(cb[1].toLowerCase());
+    else if (!last) reason = over === 0 ? 'New lead · you planned to call today' : 'New lead · call was planned for ' + nice(nfu);
+    else if (over === 0) reason = 'Follow-up due today';
+    else if (over === 1) reason = 'Follow-up was due yesterday';
+    else reason = 'Follow-up was due ' + over + ' days ago (' + nice(nfu) + ')';
+    return { bucket: 1, metric: over, hot: !!hot, type: 'followup', reason: reason + hotTxt };
+  }
+  // 2) new lead, never contacted (and no future date planned)
+  if (!last && !(nfu && nfu > t)) {
+    var age = c.created && parseISO(c.created) ? diffDays(parseISO(c.created), t) : 0;
+    return { bucket: 2, metric: age, hot: !!hot, type: 'newlead', reason: 'New lead, no follow-up yet' + (age > 0 ? ' · added ' + age + (age === 1 ? ' day' : ' days') + ' ago' : '') + hotTxt };
+  }
+  // 3) home purchase anniversary within 7 days (skip if talked in last 14 days)
+  var an = anniversary(c, t);
+  if (an && !(last && diffDays(last, t) < 14)) {
+    var when = an.days === 0 ? 'today' : an.days > 0 ? 'in ' + an.days + (an.days === 1 ? ' day' : ' days') + ' (' + nice(an.date) + ')' : 'was ' + (-an.days) + (an.days === -1 ? ' day' : ' days') + ' ago';
+    return { bucket: 3, metric: -Math.abs(an.days), hot: !!hot, type: 'anniversary', years: an.years, reason: 'Home purchase anniversary ' + when + ' · ' + an.years + (an.years === 1 ? ' year' : ' years') + hotTxt };
+  }
+  // 4) longest since last contact (> 30 days), unless a future follow-up is planned
+  if (last && diffDays(last, t) > 30 && !(nfu && nfu > t)) {
+    var since = diffDays(last, t);
+    return { bucket: 4, metric: since, hot: !!hot, type: 'checkin', reason: 'Last talked ' + since + ' days ago' + hotTxt };
+  }
+  return null;
+}
+function rankAll(){
+  var t = todayDate(), out = [];
+  S.contacts.forEach(function(c){ var r = rankInfo(c, t); if (r) { r.id = c.id; out.push(r); } });
+  out.sort(function(a, b){ return (a.bucket - b.bucket) || ((b.hot ? 1 : 0) - (a.hot ? 1 : 0)) || (b.metric - a.metric); });
+  return out;
+}
+function infoSnap(r){ return { reason: r.reason, type: r.type, years: r.years || 0 }; }
+function ensureToday(){
+  var t = todayISO();
+  if (!S.today || S.today.date !== t) S.today = { date: t, ids: [], info: {}, done: {}, choice: {}, custom: {} };
+  var T = S.today;
+  T.ids = T.ids.filter(function(id){ return byId(id); });
+  if (T.ids.length === 0) {
+    rankAll().slice(0, CAP).forEach(function(r){ T.ids.push(r.id); T.info[r.id] = infoSnap(r); });
+  }
+  save();
+  return T;
+}
+function addToTodayIfDue(c){
+  var T = ensureToday();
+  if (T.ids.indexOf(c.id) >= 0 || T.ids.length >= CAP) return;
+  var r = rankInfo(c, todayDate());
+  if (r && r.bucket === 1) { T.ids.push(c.id); T.info[c.id] = infoSnap(r); save(); }
+}
+
+/* ---------- message templates: 2 per reason ---------- */
+var TEMPLATES = {
+  followup: [
+    'Hi {first}! Following up like I said I would. Is now still a good time to talk about your plans?',
+    'Hey {first}, just circling back. Anything new on your end? No rush at all.'
+  ],
+  newlead: [
+    'Hi {first}, great connecting with you! I\'d love to help. When\'s a good time for a quick call?',
+    'Hey {first}, thanks for reaching out. Want me to send a few homes that fit what you\'re looking for?'
+  ],
+  anniversary: [
+    'Happy home anniversary, {first}! Hard to believe it\'s been {years}. Want a quick update on what your home\'s worth now?',
+    'Hi {first}, {years} in the house already! Hope you\'re loving it. Happy to send you a free home value update anytime.'
+  ],
+  checkin: [
+    'Hi {first}, it\'s been a while! How are things with you?',
+    'Hey {first}, you came to mind today. Hope all is well! If you\'re ever curious what homes near you are selling for, I\'m happy to send a quick update.'
+  ]
+};
+function messages(c, info){
+  var y = info.years || 0, yrs = y === 1 ? '1 year' : y + ' years';
+  var sig = S.agent ? ' – ' + S.agent : '';
+  return (TEMPLATES[info.type] || TEMPLATES.checkin).map(function(m){ return m.replace(/\{first\}/g, firstName(c.name)).replace(/\{years\}/g, yrs) + sig; });
+}
+function currentMsg(c){
+  var T = S.today, info = T.info[c.id] || { type: 'checkin' };
+  if (T.custom[c.id] != null) return T.custom[c.id];
+  return messages(c, info)[T.choice[c.id] || 0];
+}
+function smsHref(c, body){ var n = telNum(c.phone); return n ? 'sms:' + n + '?&body=' + encodeURIComponent(body) : '#'; }
+
+/* ---------- navigation ---------- */
+var ui = { tab: 'today', onboarding: false, peopleQuery: '' };
+function show(tab){
+  ui.tab = tab;
+  ['today', 'add', 'people'].forEach(function(t){ el('screen-' + t).classList.toggle('hidden', t !== tab); });
+  document.querySelectorAll('nav.tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === tab); });
+  el('title').textContent = { today: 'Today', add: 'Add a lead', people: 'People' }[tab];
+  render();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav.tabs button').forEach(function(b){ b.addEventListener('click', function(){ show(b.getAttribute('data-tab')); }); });
+
+function render(){
+  var hasEx = S.contacts.some(function(c){ return c.example; });
+  el('exampleBanner').classList.toggle('hidden', !hasEx);
+  el('subtitle').textContent = ui.tab === 'today' ? todayDate().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+  if (ui.tab === 'today') renderToday();
+  if (ui.tab === 'add') renderAdd();
+  if (ui.tab === 'people') renderPeople();
+}
+
+/* ---------- TODAY ---------- */
+function renderToday(){
+  var box = el('screen-today');
+  if (S.contacts.length === 0) ui.onboarding = true;
+  if (ui.onboarding) { renderOnboarding(box); return; }
+  var T = ensureToday();
+  var open = T.ids.filter(function(id){ return !T.done[id]; });
+  var done = T.ids.filter(function(id){ return T.done[id]; });
+  var h = '';
+  if (T.ids.length === 0) {
+    h = '<div class="done-screen" id="clearScreen"><div class="big-check">☀️</div><h2>Nobody to chase today</h2><p class="muted">No one is due right now. Met someone new? Add them so they don\'t slip.</p>' +
+        '<div class="row"><button class="btn primary" type="button" data-go="add">➕ Add a lead</button></div></div>';
+  } else if (open.length === 0) {
+    h = '<div class="done-screen" id="doneScreen"><div class="big-check">✓</div><h2>Done for today</h2>' +
+        '<p>You reached ' + done.length + (done.length === 1 ? ' person' : ' people') + '. That\'s the job. Nice work.</p>' +
+        '<p class="muted">Your next list will be here tomorrow morning.</p></div>' + doneListHTML(done);
+  } else {
+    h = '<div class="progress" id="progress">' + done.length + ' of ' + T.ids.length + ' done · just these, nothing more</div>';
+    open.forEach(function(id){ h += cardHTML(byId(id)); });
+    if (done.length) h += '<div class="label">Done</div>' + doneListHTML(done);
+  }
+  box.innerHTML = h + privacyHTML();
+  wireToday(box);
+}
+function doneListHTML(ids){
+  var T = S.today;
+  return '<ul class="donelist">' + ids.map(function(id){
+    var c = byId(id); var d = T.done[id] || {};
+    return '<li><span>✓ ' + esc(c.name) + (d.note ? ' — <i>' + esc(d.note) + '</i>' : '') + '</span><button type="button" class="link" data-undo="' + id + '">Undo</button></li>';
+  }).join('') + '</ul>';
+}
+function cardHTML(c){
+  var T = S.today, info = T.info[c.id] || { reason: '', type: 'checkin' };
+  var msgs = messages(c, info), choice = T.choice[c.id] || 0, custom = T.custom[c.id];
+  var tel = telNum(c.phone), body = currentMsg(c);
+  var h = '<article class="card today-card" data-id="' + c.id + '">' +
+    '<div class="name">' + esc(c.name) + '</div>' +
+    '<div class="reason">' + esc(info.reason) + '</div>' +
+    '<div class="row">' +
+      '<a class="btn primary call-btn" ' + (tel ? 'href="tel:' + tel + '"' : 'aria-disabled="true"') + '>📞 Call</a>' +
+      '<a class="btn soft text-btn" ' + (tel ? 'href="' + esc(smsHref(c, body)) + '"' : 'aria-disabled="true"') + '>💬 Text</a>' +
+    '</div>' +
+    (tel ? '' : '<p class="hint">No phone number yet. <button type="button" class="link" data-edit="' + c.id + '">Add one</button></p>') +
+    '<div class="label">Pick a message</div>';
+  msgs.forEach(function(m, i){
+    h += '<button type="button" class="msg' + (custom == null && i === choice ? ' sel' : '') + '" data-pick="' + i + '"><span class="pick">Option ' + (i + 1) + (custom == null && i === choice ? ' · selected' : '') + '</span>' + esc(m) + '</button>';
+  });
+  h += '<div class="custom-wrap' + (custom == null ? ' hidden' : '') + '"><textarea class="custom-text" rows="3" aria-label="Your message">' + esc(custom == null ? body : custom) + '</textarea><p class="hint">This is what the Text button will send to your messages app. Nothing sends by itself.</p></div>' +
+    '<button type="button" class="link customize-btn">' + (custom == null ? 'Customize' : 'Use a ready option instead') + '</button>' +
+    '<div class="row"><button type="button" class="btn check-btn">✓ Check off</button></div>' +
+    '</article>';
+  return h;
+}
+function wireToday(box){
+  box.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ show(b.getAttribute('data-go')); }); });
+  box.querySelectorAll('[data-undo]').forEach(function(b){ b.addEventListener('click', function(){ undoCheck(b.getAttribute('data-undo')); }); });
+  box.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ openEdit(b.getAttribute('data-edit')); }); });
+  box.querySelectorAll('.today-card').forEach(function(card){
+    var id = card.getAttribute('data-id'), c = byId(id), T = S.today;
+    card.querySelectorAll('.msg').forEach(function(b){ b.addEventListener('click', function(){ T.choice[id] = +b.getAttribute('data-pick'); delete T.custom[id]; save(); renderToday(); }); });
+    card.querySelector('.customize-btn').addEventListener('click', function(){
+      if (T.custom[id] == null) { T.custom[id] = currentMsg(c); save(); renderToday(); var ta = el('screen-today').querySelector('.today-card[data-id="' + id + '"] .custom-text'); if (ta) ta.focus(); }
+      else { delete T.custom[id]; save(); renderToday(); }
+    });
+    var ta = card.querySelector('.custom-text');
+    ta.addEventListener('input', function(){ T.custom[id] = ta.value; save(); var tb = card.querySelector('.text-btn'); if (telNum(c.phone)) tb.setAttribute('href', smsHref(c, ta.value)); });
+    card.querySelector('.check-btn').addEventListener('click', function(){ openCheck(id); });
+  });
+}
+
+/* ---------- check-off ---------- */
+function openSheet(html){
+  closeSheet();
+  var bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'sheetBg';
+  bg.innerHTML = '<div class="sheet" role="dialog" aria-modal="true">' + html + '</div>';
+  bg.addEventListener('click', function(e){ if (e.target === bg) closeSheet(); });
+  document.body.appendChild(bg);
+  return bg.firstChild;
+}
+function closeSheet(){ var b = el('sheetBg'); if (b) b.remove(); }
+function openCheck(id){
+  var c = byId(id), fu = null;
+  var sh = openSheet('<h2>Checked off: ' + esc(firstName(c.name)) + '</h2>' +
+    '<div class="field"><label for="whatHappened">What happened? (optional)</label><input type="text" id="whatHappened" placeholder="e.g. Left a voicemail / wants to tour Saturday" autocomplete="off"></div>' +
+    '<p class="hint">🎤 Tip: tap the mic on your phone keyboard to say it instead of typing.</p>' +
+    '<div class="label">Next follow-up</div>' +
+    '<div class="chips" id="fuChips"><button type="button" class="chip" data-fu="1w">1 week</button><button type="button" class="chip" data-fu="1m">1 month</button><button type="button" class="chip" data-fu="3m">3 months</button><button type="button" class="chip" data-fu="none">None</button></div>' +
+    '<div class="row"><button type="button" class="btn primary" id="saveCheck">Save</button></div>' +
+    '<div class="row"><button type="button" class="link" id="cancelCheck">Cancel</button></div>');
+  sh.querySelectorAll('.chip').forEach(function(b){ b.addEventListener('click', function(){ fu = b.getAttribute('data-fu'); sh.querySelectorAll('.chip').forEach(function(x){ x.classList.toggle('sel', x === b); }); }); });
+  el('cancelCheck').addEventListener('click', closeSheet);
+  el('saveCheck').addEventListener('click', function(){ checkOff(id, el('whatHappened').value.trim(), fu); closeSheet(); renderToday(); });
+}
+function checkOff(id, note, fu){
+  var c = byId(id), T = ensureToday(), t = todayDate();
+  T.done[id] = { prev: { last_contact: c.last_contact, next_follow_up: c.next_follow_up, logLen: (c.log || []).length }, note: note || '' };
+  c.last_contact = iso(t);
+  c.next_follow_up = fu === '1w' ? iso(addDays(t, 7)) : fu === '1m' ? iso(addMonths(t, 1)) : fu === '3m' ? iso(addMonths(t, 3)) : '';
+  c.log = c.log || [];
+  c.log.push({ date: iso(t), text: note || 'Reached out' });
+  save();
+}
+function undoCheck(id){
+  var c = byId(id), T = S.today, d = T.done[id]; if (!c || !d) return;
+  c.last_contact = d.prev.last_contact; c.next_follow_up = d.prev.next_follow_up; c.log = (c.log || []).slice(0, d.prev.logLen);
+  delete T.done[id]; save(); renderToday();
+}
+
+/* ---------- onboarding / quick add ---------- */
+function quickAddHTML(){
+  return '<div class="card" id="quickAdd">' +
+    '<div class="field"><label for="qaName">Name</label><input type="text" id="qaName" autocomplete="off" autocapitalize="words" placeholder="e.g. Pat Jones"></div>' +
+    '<div class="field"><label for="qaPhone">Phone (optional)</label><input type="tel" id="qaPhone" autocomplete="off" placeholder="e.g. 360-555-0199"></div>' +
+    '<div class="label">Last talked</div>' +
+    '<div class="chips" id="qaLast"><button type="button" class="chip" data-last="week">This week</button><button type="button" class="chip" data-last="month">This month</button><button type="button" class="chip" data-last="3m">3+ months</button><button type="button" class="chip" data-last="never">Never</button></div>' +
+    '<div class="row"><button type="button" class="btn primary" id="qaAdd">Add person</button></div>' +
+    '<div class="qa-added" id="qaAdded"></div></div>';
+}
+var qaSession = [];
+function wireQuickAdd(root, onChange){
+  var last = null;
+  var name = root.querySelector('#qaName'), phone = root.querySelector('#qaPhone');
+  root.querySelectorAll('#qaLast .chip').forEach(function(b){ b.addEventListener('click', function(){ last = b.getAttribute('data-last'); root.querySelectorAll('#qaLast .chip').forEach(function(x){ x.classList.toggle('sel', x === b); }); }); });
+  name.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); phone.focus(); } });
+  phone.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); add(); } });
+  root.querySelector('#qaAdd').addEventListener('click', add);
+  showAdded();
+  function add(){
+    var n = name.value.trim();
+    if (!n) { toast('Type a name first'); name.focus(); return; }
+    var t = todayDate();
+    var lc = last === 'week' ? iso(addDays(t, -3)) : last === 'month' ? iso(addDays(t, -15)) : last === '3m' ? iso(addDays(t, -100)) : '';
+    var c = { id: uid(), name: n, phone: fmtPhone(phone.value), email: '', last_contact: lc, next_follow_up: '', notes: '', tags: '', home_purchase_date: '', created: iso(t), log: [], example: false };
+    S.contacts.push(c); save();
+    qaSession.push(n);
+    name.value = ''; phone.value = ''; last = null;
+    root.querySelectorAll('#qaLast .chip').forEach(function(x){ x.classList.remove('sel'); });
+    toast('Added ' + n);
+    showAdded(); name.focus();
+    if (onChange) onChange();
+  }
+  function showAdded(){
+    var real = S.contacts.filter(function(c){ return !c.example; }).length;
+    var a = root.querySelector('#qaAdded');
+    a.innerHTML = qaSession.length ? '✓ Added: ' + qaSession.slice(-4).map(esc).join(', ') + (qaSession.length > 4 ? '…' : '') + '<br>' + real + ' ' + (real === 1 ? 'person' : 'people') + ' so far · aim for 10–15' : '';
+  }
+}
+function renderOnboarding(box){
+  var real = S.contacts.filter(function(c){ return !c.example; }).length;
+  box.innerHTML = '<div class="welcome" id="onboarding"><h2>Add your first 10–15 people</h2>' +
+    '<p class="muted">Start with whoever comes to mind: new leads, past clients, friends who might move. About 20 seconds each. Each morning this screen will show who to talk to.</p></div>' +
+    quickAddHTML() +
+    '<div class="row"><button type="button" class="btn soft" id="obDone"' + (real ? '' : ' disabled') + '>Show my list for today →</button></div>' +
+    '<p class="hint" style="text-align:center">Have a spreadsheet? <button type="button" class="link" id="obImport">Import a CSV file</button> (optional)</p>' +
+    privacyHTML();
+  wireQuickAdd(box, function(){ el('obDone').disabled = false; });
+  el('obDone').addEventListener('click', function(){ ui.onboarding = false; qaSession = []; S.today = null; renderToday(); });
+  el('obImport').addEventListener('click', function(){ el('csvFile').click(); });
+}
+
+/* ---------- ADD: free-text lead capture ---------- */
+var STOP = {};
+('at the a an and or but from to for of in on with who that she he they her his him them their wants want wanted looking is was are will would said says call text email next this last back about re today tomorrow tonight week month year open house showing lead new met meet saw talked spoke chatted buyer seller client my our your via by his hers also maybe just interested asked needs need ready hot thinking' +
+ ' ' + WEEKDAYS.join(' ') + ' ' + MONTHS.join(' ') + ' ' + MON3.join(' ')).split(' ').forEach(function(w){ STOP[w] = 1; });
+var NUMW = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, couple: 2, few: 3 };
+function monthIdx(w){ w = (w || '').toLowerCase().replace('.', ''); var i = MONTHS.indexOf(w); if (i < 0) i = MON3.indexOf(w.slice(0, 3)); if (i >= 0 && w.length >= 3 && (MONTHS[i].indexOf(w) === 0 || w === 'sept')) return i; return -1; }
+function futureDate(m, d, t){ var x = new Date(t.getFullYear(), m, d); if (x < t) x = new Date(t.getFullYear() + 1, m, d); return x; }
+function parseDateHint(text, t){
+  t = t || todayDate();
+  var s = ' ' + text.toLowerCase().replace(/[,;]/g, ' ') + ' ', m;
+  function r(d, why){ return { iso: iso(d), why: why.trim() }; }
+  if ((m = /\b(today|tonight|this afternoon|this evening)\b/.exec(s))) return r(t, m[0]);
+  if ((m = /\b(tomorrow|tmrw)\b/.exec(s))) return r(addDays(t, 1), m[0]);
+  if ((m = /\bin\s+(a|an|one|two|three|four|five|six|couple(?: of)?|few|\d+)\s+(day|week|month)s?\b/.exec(s))) {
+    var n = NUMW[m[1].replace(' of', '')] || parseInt(m[1], 10) || 1;
+    return r(m[2] === 'day' ? addDays(t, n) : m[2] === 'week' ? addDays(t, 7 * n) : addMonths(t, n), m[0]);
+  }
+  if ((m = /\bnext\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/.exec(s))) {
+    var wd = WEEKDAYS.indexOf(m[1]), monIdx = (t.getDay() + 6) % 7;
+    var nextMon = addDays(t, 7 - monIdx);
+    return r(addDays(nextMon, (wd + 6) % 7), m[0]);
+  }
+  if ((m = /\bnext week\b/.exec(s))) return r(addDays(t, 7), m[0]);
+  if ((m = /\bnext month\b/.exec(s))) return r(addMonths(t, 1), m[0]);
+  if ((m = /\bend of (?:the )?month\b/.exec(s))) return r(new Date(t.getFullYear(), t.getMonth() + 1, 0), m[0]);
+  if ((m = /\b(?:this )?weekend\b/.exec(s))) return r(addDays(t, (6 - t.getDay() + 7) % 7), m[0]);
+  if ((m = /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/.exec(s)) && monthIdx(m[1]) >= 0 && +m[2] >= 1 && +m[2] <= 31)
+    return r(futureDate(monthIdx(m[1]), +m[2], t), m[0]);
+  if ((m = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/.exec(s)) && monthIdx(m[2]) >= 0 && +m[1] >= 1 && +m[1] <= 31)
+    return r(futureDate(monthIdx(m[2]), +m[1], t), m[0]);
+  if ((m = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/.exec(s)) && +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= 31) {
+    if (m[3]) { var y = +m[3]; if (y < 100) y += 2000; return r(new Date(y, +m[1] - 1, +m[2]), m[0]); }
+    return r(futureDate(+m[1] - 1, +m[2], t), m[0]);
+  }
+  if ((m = /\b(in|around|after|by|until|early|mid|late)\s+(january|february|march|april|may|june|july|august|september|october|november|december)\b/.exec(s))) {
+    var mi = MONTHS.indexOf(m[2]), day = m[1] === 'mid' ? 15 : m[1] === 'late' ? 20 : 1;
+    if (mi === t.getMonth() && m[1] !== 'mid' && m[1] !== 'late') return r(t, m[0]);
+    var dd = new Date(t.getFullYear(), mi, day); if (dd < t) dd = new Date(t.getFullYear() + 1, mi, day);
+    return r(dd, m[0]);
+  }
+  if ((m = /\b(?:on|this|by)?\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/.exec(s))) {
+    var w2 = WEEKDAYS.indexOf(m[1]); var ahead = (w2 - t.getDay() + 7) % 7 || 7;
+    return r(addDays(t, ahead), m[0]);
+  }
+  return null;
+}
+function wordsAfter(str){
+  var seg = str.split(/[,;.!?\n\d(]/)[0];
+  var words = seg.trim().split(/\s+/), out = [];
+  for (var i = 0; i < words.length && out.length < 3; i++) {
+    var w = words[i].replace(/[“”"]/g, '');
+    if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]*$/.test(w) || STOP[w.toLowerCase().replace(/['’]s$/, '')]) break;
+    out.push(w);
+  }
+  return out;
+}
+function titleCase(ws){ return ws.map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '); }
+function parseName(rest){
+  var trig = /\b(met with|met|meet|meeting|talked to|talked with|spoke to|spoke with|chatted with|showing with|showed|call|called|text|texted|new lead|lead|referral|referred|name is|named)\b[:\-]?\s+/gi, m;
+  while ((m = trig.exec(rest))) {
+    var ws = wordsAfter(rest.slice(m.index + m[0].length));
+    if (ws.length) return titleCase(ws);
+  }
+  // fallback: runs of Capitalized words
+  var runs = [], cur = [];
+  rest.split(/([\s,;.!?]+)/).forEach(function(tok){
+    if (/^[\s]+$/.test(tok)) return;
+    if (/^[A-Z][a-zA-Z'’\-]+$/.test(tok) && !STOP[tok.toLowerCase()]) cur.push(tok);
+    else { if (cur.length) runs.push(cur); cur = []; }
+  });
+  if (cur.length) runs.push(cur);
+  for (var i = 0; i < runs.length; i++) if (runs[i].length >= 2) return runs[i].slice(0, 3).join(' ');
+  var start = wordsAfter(rest.trim());
+  if (start.length && /^[A-Z]/.test(start[0])) return start.join(' ');
+  return runs.length ? runs[0].join(' ') : '';
+}
+function parseLead(text, t){
+  var out = { name: '', phone: '', email: '', next_follow_up: '', dateWhy: '', notes: (text || '').trim() };
+  var rest = ' ' + (text || '') + ' ';
+  var em = /[\w.+\-]+@[\w\-]+\.[\w.\-]+/.exec(rest); if (em) { out.email = em[0]; rest = rest.replace(em[0], ' , '); }
+  var ph = /(^|[^\d])((?:\+?1[\s.\-]?)?(?:\(\d{3}\)|\d{3})[\s.\-]?\d{3}[\s.\-]?\d{4})(?!\d)/.exec(rest);
+  if (ph) { out.phone = fmtPhone(ph[2]); rest = rest.replace(ph[2], ' , '); }
+  var dh = parseDateHint(rest, t); if (dh) { out.next_follow_up = dh.iso; out.dateWhy = dh.why; }
+  out.name = parseName(rest);
+  return out;
+}
+var addTouched = {};
+function renderAdd(){
+  var box = el('screen-add');
+  if (box.getAttribute('data-ready')) { refreshParsed(); return; }
+  box.setAttribute('data-ready', '1');
+  box.innerHTML =
+    '<p class="muted" style="margin-top:4px">Type it, or tap the 🎤 on your keyboard and just say it. One sentence is enough.</p>' +
+    '<textarea id="addText" rows="4" placeholder="Met Sarah Lee at open house, 360-555-0101, wants 3br in Felida, call next Tuesday"></textarea>' +
+    '<div class="card hidden" id="addParsed">' +
+      '<div class="parsed-ok">Here\'s what I got. Tap a field only if it\'s wrong.</div>' +
+      '<div class="field"><label for="pName">Name</label><input type="text" id="pName" autocomplete="off"></div>' +
+      '<div class="field"><label for="pPhone">Phone</label><input type="tel" id="pPhone" autocomplete="off"></div>' +
+      '<div class="field"><label for="pDate">Follow up on</label><input type="date" id="pDate"><div class="hint" id="pDateWhy"></div></div>' +
+      '<div class="field"><label>Note saved with them</label><div id="pNotes" class="muted" style="font-size:15px"></div></div>' +
+      '<div class="row"><button type="button" class="btn primary" id="saveLead">Save</button></div>' +
+    '</div>' +
+    '<details id="qaDetails"><summary>Adding several people at once? Quick add</summary>' + quickAddHTML() + '</details>' +
+    privacyHTML();
+  var ta = el('addText'), timer;
+  ta.addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(refreshParsed, 200); });
+  ['pName', 'pPhone', 'pDate'].forEach(function(id){ el(id).addEventListener('input', function(){ addTouched[id] = 1; if (id === 'pDate') el('pDateWhy').textContent = el('pDate').value ? niceISO(el('pDate').value) : 'No follow-up date'; }); });
+  el('saveLead').addEventListener('click', saveLead);
+  wireQuickAdd(el('qaDetails'));
+  refreshParsed();
+}
+function refreshParsed(){
+  var txt = el('addText').value.trim();
+  el('addParsed').classList.toggle('hidden', !txt);
+  if (!txt) return;
+  var p = parseLead(txt);
+  if (!addTouched.pName) el('pName').value = p.name;
+  if (!addTouched.pPhone) el('pPhone').value = p.phone;
+  if (!addTouched.pDate) { el('pDate').value = p.next_follow_up; el('pDateWhy').textContent = p.next_follow_up ? niceISO(p.next_follow_up) + ' (from “' + p.dateWhy + '”)' : 'No date found. It will show up as a new lead.'; }
+  el('pNotes').textContent = txt;
+  el('pDate').setAttribute('data-email', p.email);
+}
+function saveLead(){
+  var name = el('pName').value.trim(), phone = el('pPhone').value.trim();
+  if (!name && !phone) { toast('Add at least a name or phone'); el('pName').focus(); return; }
+  var c = { id: uid(), name: name || 'New lead ' + fmtPhone(phone), phone: fmtPhone(phone), email: el('pDate').getAttribute('data-email') || '', last_contact: '', next_follow_up: el('pDate').value || '', notes: el('addText').value.trim(), tags: 'lead', home_purchase_date: '', created: todayISO(), log: [], example: false };
+  S.contacts.push(c); save();
+  addToTodayIfDue(c);
+  toast('Saved ' + c.name + (c.next_follow_up ? ' · follow up ' + niceISO(c.next_follow_up) : ''));
+  el('addText').value = ''; addTouched = {}; refreshParsed();
+}
+
+/* ---------- PEOPLE ---------- */
+function lastTalked(c){
+  var l = parseISO(c.last_contact); if (!l) return 'Never talked';
+  var d = diffDays(l, todayDate()); return d <= 0 ? 'Talked today' : d === 1 ? 'Talked yesterday' : 'Last talked ' + d + ' days ago';
+}
+function renderPeople(){
+  var box = el('screen-people');
+  if (!box.getAttribute('data-ready')) {
+    box.setAttribute('data-ready', '1');
+    box.innerHTML =
+      '<input type="search" id="peopleSearch" placeholder="Search name, phone, notes" aria-label="Search people">' +
+      '<div class="row"><button type="button" class="btn soft" id="peopleAdd">➕ Add person</button></div>' +
+      '<div class="hint" id="peopleCount"></div><ul class="people" id="peopleList"></ul>' +
+      '<div class="sep"></div><div class="label">Import &amp; export (optional)</div>' +
+      '<div class="row"><button type="button" class="btn" id="importBtn">Import CSV</button><button type="button" class="btn" id="exportBtn">Export CSV</button></div>' +
+      '<p class="hint">Any spreadsheet saved as CSV works. Columns can be: name, phone, email, last_contact, next_follow_up, notes, tags, home_purchase_date. <button type="button" class="link" id="templateBtn">Get a blank template</button></p>' +
+      '<div class="label">Settings</div>' +
+      '<div class="field"><label for="agentName">Your name (added to the end of messages, optional)</label><input type="text" id="agentName" autocomplete="off" placeholder="e.g. Cameron"></div>' +
+      '<div class="row"><button type="button" class="btn danger" id="eraseBtn">Erase all my data</button></div>' +
+      '<p class="hint">Tip: tap Export CSV now and then as a backup. Clearing this browser\'s data also clears your list.</p>' +
+      privacyHTML();
+    el('peopleSearch').addEventListener('input', function(){ ui.peopleQuery = this.value; listPeople(); });
+    el('peopleAdd').addEventListener('click', function(){ show('add'); });
+    el('importBtn').addEventListener('click', function(){ el('csvFile').click(); });
+    el('exportBtn').addEventListener('click', exportCSV);
+    el('templateBtn').addEventListener('click', function(){ download('contacts_template.csv', CSV_COLS.join(',') + '\n"Pat Example","360-555-0199","pat@example.com","2026-08-20","","Met at open house; pre-approved","buyer",""\n'); });
+    el('agentName').value = S.agent || '';
+    el('agentName').addEventListener('input', function(){ S.agent = this.value.trim(); save(); });
+    el('eraseBtn').addEventListener('click', function(){
+      if (window.confirm('Erase every contact on this device? This cannot be undone.')) { S.contacts = []; S.today = null; save(); toast('All data erased'); show('today'); }
+    });
+  }
+  listPeople();
+}
+function listPeople(){
+  var q = (ui.peopleQuery || '').toLowerCase().trim(), qd = digits(q);
+  var list = S.contacts.filter(function(c){
+    if (!q) return true;
+    return [c.name, c.notes, c.tags, c.email].join(' ').toLowerCase().indexOf(q) >= 0 || (qd.length >= 3 && digits(c.phone).indexOf(qd) >= 0);
+  }).sort(function(a, b){ return a.name.localeCompare(b.name); });
+  el('peopleCount').textContent = S.contacts.length + (S.contacts.length === 1 ? ' person' : ' people') + (q ? ' · ' + list.length + ' match' : '');
+  el('peopleList').innerHTML = list.map(function(c){
+    return '<li data-id="' + c.id + '"><div class="pname">' + esc(c.name) + '</div><div class="pmeta">' + esc([fmtPhone(c.phone), lastTalked(c), c.next_follow_up ? 'next: ' + niceISO(c.next_follow_up) : ''].filter(Boolean).join(' · ')) + '</div></li>';
+  }).join('') || '<li class="muted">No one yet.</li>';
+  el('peopleList').querySelectorAll('li[data-id]').forEach(function(li){ li.addEventListener('click', function(){ openEdit(li.getAttribute('data-id')); }); });
+}
+function openEdit(id){
+  var c = byId(id); if (!c) return;
+  function f(key, label, type){ return '<div class="field"><label for="e_' + key + '">' + label + '</label>' + (type === 'area' ? '<textarea id="e_' + key + '" rows="3">' + esc(c[key]) + '</textarea>' : '<input type="' + type + '" id="e_' + key + '" value="' + esc(c[key]) + '" autocomplete="off">') + '</div>'; }
+  var hist = (c.log || []).slice().reverse().map(function(l){ return '<li>' + esc(niceISO(l.date)) + ': ' + esc(l.text) + '</li>'; }).join('');
+  openSheet('<h2>' + esc(c.name) + '</h2>' +
+    f('name', 'Name', 'text') + f('phone', 'Phone', 'tel') + f('email', 'Email', 'email') +
+    f('last_contact', 'Last talked', 'date') + f('next_follow_up', 'Next follow-up', 'date') + f('home_purchase_date', 'Home purchase date (for anniversaries)', 'date') +
+    f('tags', 'Tags (e.g. buyer, past client)', 'text') + f('notes', 'Notes', 'area') +
+    (hist ? '<div class="label">History</div><ul class="history">' + hist + '</ul>' : '') +
+    '<div class="row"><button type="button" class="btn primary" id="e_save">Save</button></div>' +
+    '<div class="row"><button type="button" class="btn danger" id="e_del">Delete</button><button type="button" class="btn" id="e_cancel">Cancel</button></div>');
+  el('e_cancel').addEventListener('click', closeSheet);
+  el('e_save').addEventListener('click', function(){
+    ['name', 'phone', 'email', 'last_contact', 'next_follow_up', 'home_purchase_date', 'tags', 'notes'].forEach(function(k){ c[k] = el('e_' + k).value.trim(); });
+    if (!c.name) c.name = 'No name';
+    c.phone = fmtPhone(c.phone);
+    save(); closeSheet(); toast('Saved'); render();
+  });
+  el('e_del').addEventListener('click', function(){
+    if (window.confirm('Delete ' + c.name + '?')) { S.contacts = S.contacts.filter(function(x){ return x.id !== id; }); save(); closeSheet(); toast('Deleted'); render(); }
+  });
+}
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  text = String(text || '').replace(/^\uFEFF/, '');
+  var firstLine = text.split(/\r?\n/)[0] || '';
+  var cnt = function(ch){ return firstLine.split(ch).length - 1; };
+  var delim = cnt('\t') > cnt(',') && cnt('\t') >= cnt(';') ? '\t' : cnt(';') > cnt(',') ? ';' : ',';
+  var rows = [], row = [], f = '', q = false;
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(f); f = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += ch;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(x){ return x.trim() !== ''; }); });
+}
+var ALIASES = {
+  name: ['name', 'fullname', 'contact', 'contactname', 'client', 'clientname', 'displayname'],
+  first: ['firstname', 'first', 'givenname'],
+  lastn: ['lastname', 'surname', 'familyname'],
+  phone: ['phone', 'phonenumber', 'mobile', 'mobilephone', 'cell', 'cellphone', 'tel', 'telephone', 'number', 'phone1', 'primaryphone'],
+  email: ['email', 'emailaddress', 'mail', 'email1'],
+  last_contact: ['lastcontact', 'lastcontacted', 'lasttalked', 'lastcontactdate', 'lasttouch', 'lastspoke', 'lastcall', 'lastactivity'],
+  next_follow_up: ['nextfollowup', 'followup', 'followupdate', 'nextfollowupdate', 'next', 'nextcontact', 'nextcontactdate', 'nextstepdate', 'callbackdate', 'remind', 'reminder'],
+  notes: ['notes', 'note', 'comments', 'comment', 'description', 'details', 'background'],
+  tags: ['tags', 'tag', 'labels', 'label', 'type', 'category', 'group', 'groups', 'status'],
+  home_purchase_date: ['homepurchasedate', 'purchasedate', 'closingdate', 'closedate', 'closed', 'homeanniversary', 'anniversary', 'purchased', 'homeclosedate']
+};
+function mapHeader(h){
+  var k = String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  for (var f in ALIASES) if (ALIASES[f].indexOf(k) >= 0) return f;
+  return null;
+}
+function looseDate(s){
+  s = String(s || '').trim(); if (!s) return '';
+  var m;
+  if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/.exec(s))) return iso(new Date(+m[1], +m[2] - 1, +m[3]));
+  if ((m = /^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/.exec(s))) { var y = +m[3]; if (y < 100) y += 2000; return iso(new Date(y, +m[1] - 1, +m[2])); }
+  if ((m = /^([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$/i.exec(s)) && monthIdx(m[1]) >= 0) return iso(new Date(+m[3], monthIdx(m[1]), +m[2]));
+  if ((m = /^(\d{1,2})\s+([a-z]+)\.?,?\s+(\d{4})$/i.exec(s)) && monthIdx(m[2]) >= 0) return iso(new Date(+m[3], monthIdx(m[2]), +m[1]));
+  return '';
+}
+function importRows(rows){
+  if (!rows.length) return { added: 0, updated: 0, skipped: 0, error: 'The file looks empty.' };
+  var head = rows[0].map(mapHeader);
+  if (!head.some(function(x){ return x === 'name' || x === 'first' || x === 'phone'; })) return { added: 0, updated: 0, skipped: 0, error: 'Couldn\'t find a name or phone column in the first row.' };
+  var added = 0, updated = 0, skipped = 0;
+  rows.slice(1).forEach(function(r){
+    var o = {};
+    head.forEach(function(f, i){ if (f && r[i] != null && String(r[i]).trim() !== '') o[f] = (o[f] ? o[f] + ' ' : '') + String(r[i]).trim(); });
+    if (!o.name && (o.first || o.lastn)) o.name = [o.first, o.lastn].filter(Boolean).join(' ');
+    if (!o.name && !o.phone) { skipped++; return; }
+    ['last_contact', 'next_follow_up', 'home_purchase_date'].forEach(function(k){ if (o[k]) o[k] = looseDate(o[k]); });
+    if (o.phone) o.phone = fmtPhone(o.phone);
+    var d = digits(o.phone).slice(-10);
+    var ex = S.contacts.filter(function(c){ return !c.example && ((d.length >= 7 && digits(c.phone).slice(-10) === d) || (o.name && c.name.toLowerCase() === o.name.toLowerCase())); })[0];
+    if (ex) { CSV_COLS.forEach(function(k){ if (o[k]) ex[k] = o[k]; }); updated++; }
+    else {
+      var c = { id: uid(), created: todayISO(), log: [], example: false };
+      CSV_COLS.forEach(function(k){ c[k] = o[k] || ''; });
+      if (!c.name) c.name = 'Contact ' + c.phone;
+      S.contacts.push(c); added++;
+    }
+  });
+  if (S.today && S.today.ids.length === 0) S.today = null;
+  save();
+  return { added: added, updated: updated, skipped: skipped };
+}
+el('csvFile').addEventListener('change', function(){
+  var file = this.files && this.files[0]; if (!file) return;
+  var input = this;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var res = importRows(parseCSV(reader.result));
+    input.value = '';
+    var hasEx = S.contacts.some(function(c){ return c.example; });
+    var sh = openSheet('<h2 id="importResult">' + (res.error ? 'Couldn\'t import' : 'Imported') + '</h2>' +
+      '<p>' + (res.error ? esc(res.error) : res.added + ' new, ' + res.updated + ' updated' + (res.skipped ? ', ' + res.skipped + ' rows skipped (no name or phone)' : '') + '.') + '</p>' +
+      (hasEx && !res.error ? '<div class="row"><button type="button" class="btn" id="impClearEx">Also remove the example contacts</button></div>' : '') +
+      '<div class="row"><button type="button" class="btn primary" id="impOk">OK</button></div>');
+    if (el('impClearEx')) el('impClearEx').addEventListener('click', function(){ clearExamples(); closeSheet(); });
+    el('impOk').addEventListener('click', function(){ closeSheet(); if (ui.onboarding && S.contacts.length) { ui.onboarding = false; S.today = null; } render(); });
+    if (ui.tab === 'people') listPeople();
+  };
+  reader.readAsText(file);
+});
+function csvCell(v){ v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCSV(){
+  var lines = [CSV_COLS.join(',')].concat(S.contacts.map(function(c){ return CSV_COLS.map(function(k){ return csvCell(c[k]); }).join(','); }));
+  download('today_list_contacts_' + todayISO() + '.csv', lines.join('\n') + '\n');
+  toast('Saved a CSV copy to your device');
+}
+function download(name, text){
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(text);
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- example data ---------- */
+function clearExamples(){
+  S.contacts = S.contacts.filter(function(c){ return !c.example; });
+  S.today = null; save();
+  ui.onboarding = true; qaSession = [];
+  toast('Example data cleared');
+  show('today');
+}
+el('clearExampleBtn').addEventListener('click', clearExamples);
+
+function privacyHTML(){ return '<p class="privacy">🔒 Your contacts are saved only in this browser on this device. This app makes no network calls.</p>'; }
+
+// Small hook for automated tests only (no network, no side effects).
+window.TodayList = { parseLead: parseLead, parseDateHint: parseDateHint, parseCSV: parseCSV, rankAll: rankAll, state: function(){ return S; } };
+
+el('storageWarn').classList.toggle('hidden', storageOK);
+render();
+})();
+</script>
+</body>
+</html>
